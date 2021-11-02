@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">AntiRain</string>
+    <string name="positionFrom">Откуда:</string>
+    <string name="positionTo">Куда:</string>
+    <string name="findCurrentLocation">findCurrentLocation</string>
+    <string name="enterStartPosition">EnterStartPosition</string>
 </resources>
