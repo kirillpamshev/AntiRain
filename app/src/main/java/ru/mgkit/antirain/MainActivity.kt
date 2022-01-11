@@ -22,14 +22,19 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import com.google.android.material.snackbar.Snackbar
 import android.content.Intent
-import android.location.Location
-import android.location.LocationListener
+import android.location.*
 import org.osmdroid.util.GeoPoint
 
 import org.osmdroid.api.IMapController
-import android.location.LocationManager
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageButton
+import org.osmdroid.bonuspack.location.GeocoderNominatim
 import org.osmdroid.views.CustomZoomButtonsController
 import java.lang.Exception
+import org.osmdroid.views.overlay.Marker
+import java.util.*
+import kotlin.collections.ArrayList
 
 
 const val REQUEST_CODE_PERMISSION_LOCATION = 0
@@ -37,6 +42,12 @@ const val REQUEST_CODE_PERMISSION_LOCATION = 0
 class MainActivity : AppCompatActivity() {
     private lateinit var map:MapView
     private var mCurrentLocation: Location? = null
+    private lateinit var startPoint: GeoPoint
+    private lateinit var endPoint: GeoPoint
+    private lateinit var currentPossitionButton: ImageButton
+    private lateinit var targetPoint: ImageButton
+    private lateinit var position_from_field: EditText
+    private lateinit var position_to_field: EditText
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,7 +110,46 @@ class MainActivity : AppCompatActivity() {
         mCompassOverlay.enableCompass();
         map.getOverlays().add(mCompassOverlay)
 
+        currentPossitionButton = findViewById(R.id.startCurrentPosition)
+        targetPoint = findViewById(R.id.EnterPosition)
+        position_from_field = findViewById(R.id.et_positionFrom)
+
+        currentPossitionButton.setOnClickListener {
+            val location = mLocationProvider.lastKnownLocation
+            val lat = (location.getLatitude() * 1E6).toInt()
+            val lng = (location.getLongitude() * 1E6).toInt()
+            startPoint  = GeoPoint(lat, lng);
+            val startMarker = Marker(map)
+            startMarker.position = startPoint
+            startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            map.overlays.add(startMarker)
+            map.invalidate();
+            //startMarker.setIcon(getResources().getDrawable(R.drawable.ic_launcher));
+            startMarker.setTitle("Start point")
+            val geocoder: Geocoder
+            val addresses: List<Address>
+            geocoder = Geocoder(this, Locale.getDefault())
+            addresses = geocoder.getFromLocation(location.latitude, location.getLongitude(), 1)
+            position_from_field.setText(addresses[0].countryName+","
+                    +addresses[0].adminArea+","+addresses[0].subAdminArea+","
+                    +addresses[0].locality+","+addresses[0].thoroughfare+","
+                    +addresses[0].featureName)
+        }
+        position_to_field.setOnClickListener{
+            val adr_str = position_to_field.text.toString()
+            if (adr_str != "") {
+                val nom_coder = GeocoderNominatim(Locale.getDefault(), "AntiRain" )
+                val address = nom_coder.getFromLocationName(adr_str, 1)
+                //address[0].latitude
+                //*Доделать второй маркер, geoPoint - double*
+            }
+
+
+        }
+
     }
+
+
     override fun onResume() {
         super.onResume()
         //this will refresh the osmdroid configuration on resuming.
