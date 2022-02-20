@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/GroupFragment">
+
+    <fragment
+        android:id="@+id/GroupFragment"
+        android:name="com.nootous.GroupName"
+        android:label="@string/group_fragment_label"
+        tools:layout="@layout/group_name">
+        <action
+            android:id="@+id/action_GroupFragment_to_CountFragment"
+            app:destination="@id/CountFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/CountFragment"
+        android:name="com.nootous.Countdown"
+        android:label="@string/count_fragment_label"
+        tools:layout="@layout/countdown">
+        <action
+            android:id="@+id/action_CountFragment_to_MapFragment"
+            app:destination="@id/MapFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/MapFragment"
+        android:name="com.nootous.Map"
+        android:label="@string/map_fragment_label"
+        tools:layout="@layout/map">
+        <action
+            android:id="@+id/action_MapFragment_to_CountFragment"
+            app:destination="@id/CountFragment" />
+    </fragment>
+</navigation>
