@@ -1,6 +1,7 @@
 package ru.mgkit.antirain
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -35,7 +36,14 @@ import java.lang.Exception
 import org.osmdroid.views.overlay.Marker
 import java.util.*
 import kotlin.collections.ArrayList
+import android.os.StrictMode
+import android.os.StrictMode.ThreadPolicy
+import org.osmdroid.views.overlay.Overlay
+import org.osmdroid.bonuspack.routing.OSRMRoadManager
 
+import org.osmdroid.bonuspack.routing.RoadManager
+import org.osmdroid.bonuspack.routing.Road
+import org.osmdroid.views.overlay.Polyline
 
 const val REQUEST_CODE_PERMISSION_LOCATION = 0
 
@@ -50,9 +58,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var position_to_field: EditText
 
 
+    @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
+
+        val policy = ThreadPolicy.Builder().permitAll().build()
+        StrictMode.setThreadPolicy(policy)
         //handle permissions first, before map is created. not depicted here
 
         //load/initialize the osmdroid configuration, this can be done
@@ -113,6 +125,7 @@ class MainActivity : AppCompatActivity() {
         currentPossitionButton = findViewById(R.id.startCurrentPosition)
         targetPoint = findViewById(R.id.EnterPosition)
         position_from_field = findViewById(R.id.et_positionFrom)
+        position_to_field = findViewById(R.id.et_positionTo)
 
         currentPossitionButton.setOnClickListener {
             val location = mLocationProvider.lastKnownLocation
@@ -122,6 +135,16 @@ class MainActivity : AppCompatActivity() {
             val startMarker = Marker(map)
             startMarker.position = startPoint
             startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            startMarker.id = "startMarker"
+
+            for (i in 0 until map.getOverlays().size) {
+                val overlay: Overlay = map.getOverlays().get(i)
+                if (overlay is Marker && (overlay).id == "startMarker") {
+                    map.getOverlays().remove(overlay)
+                    break
+                }
+            }
+
             map.overlays.add(startMarker)
             map.invalidate();
             //startMarker.setIcon(getResources().getDrawable(R.drawable.ic_launcher));
@@ -135,13 +158,42 @@ class MainActivity : AppCompatActivity() {
                     +addresses[0].locality+","+addresses[0].thoroughfare+","
                     +addresses[0].featureName)
         }
-        position_to_field.setOnClickListener{
+        targetPoint.setOnClickListener{
             val adr_str = position_to_field.text.toString()
             if (adr_str != "") {
                 val nom_coder = GeocoderNominatim(Locale.getDefault(), "AntiRain" )
                 val address = nom_coder.getFromLocationName(adr_str, 1)
+                // проверка есть ли кординаты и перебор вариантов, если нет
                 //address[0].latitude
                 //*Доделать второй маркер, geoPoint - double*
+                val lat = (address[0].latitude * 1E6).toInt()
+                val lng = (address[0].longitude * 1E6).toInt()
+                endPoint  = GeoPoint(lat, lng);
+                val endMarker = Marker(map)
+                endMarker.position = endPoint
+                endMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                endMarker.setTitle("End point")
+                endMarker.id = "endMarker"
+
+                for (i in 0 until map.overlays.size) {
+                    val overlay: Overlay = map.overlays[i]
+                    if (overlay is Marker && (overlay).id == "endMarker") {
+                        map.getOverlays().remove(overlay)
+                        break
+                    }
+                }
+
+                map.overlays.add(endMarker)
+                map.invalidate()
+                val roadManager: RoadManager = OSRMRoadManager(this, "AntiRain")
+                (roadManager as OSRMRoadManager).setMean(OSRMRoadManager.MEAN_BY_BIKE)
+                val waypoints = ArrayList<GeoPoint>()
+                waypoints.add(startPoint)
+                waypoints.add(endPoint)
+                val road = roadManager.getRoad(waypoints)
+                val roadOverlay = RoadManager.buildRoadOverlay(road)
+                map.getOverlays().add(roadOverlay)
+                map.invalidate()
             }
 
 

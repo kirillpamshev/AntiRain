@@ -28,7 +28,8 @@ import java.util.HashMap;
  */
 public class OSRMRoadManager extends RoadManager {
 
-	static final String DEFAULT_SERVICE = "https://routing.openstreetmap.de/";
+	//static final String DEFAULT_SERVICE = "https://routing.openstreetmap.de/";
+	static final String DEFAULT_SERVICE = "http://192.168.0.109:5000/";
 	public static final String MEAN_BY_CAR = "routed-car/route/v1/driving/";
 	public static final String MEAN_BY_BIKE = "routed-bike/route/v1/driving/";
 	public static final String MEAN_BY_FOOT = "routed-foot/route/v1/driving/";
