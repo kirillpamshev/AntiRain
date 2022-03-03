@@ -19,6 +19,56 @@ import java.util.ArrayList
 import java.util.HashMap
 import org.osmdroid.bonuspack.R
 
+import java.text.NumberFormat
+
+fun round6(d: Double):Double {
+    val format = NumberFormat.getInstance()
+    format.maximumFractionDigits = 6
+    val formattedNumber = format.format(d)
+    return formattedNumber.replace(",", ".").toDouble()
+}
+
+fun decoder(enc: String): ArrayList<GeoPoint> {
+    val kPolylinePrecision = 1E6
+    val kInvPolylinePrecision = 1.0 / kPolylinePrecision
+    var i =  0
+    var a = 0
+    val decoded: ArrayList<Array<Double>> = arrayListOf()
+    var decoded_item: Array<Double>?;
+    var previous: Array<Int> = arrayOf(0, 0)
+    while (i < enc.length) {
+        var ll: Array<Int> = arrayOf(0, 0)
+        for( j in 0 .. 1) {
+            var shift = 0
+            var byte = 0x20
+            while (byte >= 0x20) {
+                byte = (enc[i++].code.toByte() - 63)
+                a = (byte and 0x1f) shl shift
+                ll[j] = ll[j] or a
+                shift += 5
+            }
+
+            ll[j] = previous[j] + if ((ll[j] and 1) != 0) {
+                (ll[j] ushr 1).inv()
+            } else {
+                ll[j] ushr 1
+            }
+
+            previous[j] = ll[j]
+        }
+        decoded_item = arrayOf(round6(ll[1] * kInvPolylinePrecision),  round6(ll[0] * kInvPolylinePrecision))
+        decoded.add(decoded_item)
+    }
+    val points = arrayListOf<GeoPoint>()
+    for(ar in decoded) {
+        points.add(GeoPoint(ar[1], ar[0]))
+    }
+    return points
+
+
+
+
+}
 
 
 /** get a route between a start and a destination point, going through a list of waypoints.
@@ -35,21 +85,32 @@ import org.osmdroid.bonuspack.R
  * @author M.Kergall
  */
 
-class ValhalaRoadManager(private val mContext: Context, protected var mUserAgent: String) :
+class ValhalaRoadManager() :
     RoadManager() {
-
         //"http://localhost:8002/route --data '{"locations":[{"lat":55.7074932,"lon":37.5690340},{"lat":55.7175925,"lon":37.5496478}],"costing":"bicycle","directions_type":"maneuvers"}' | jq '.'"
+
+    private lateinit var mMeanUrl: String
+    private lateinit var mContext: Context
+    protected lateinit var mUserAgent: String
+    protected lateinit var mServiceUrl: String
+
+    constructor (context: Context, userAgent: String) : this() {
+        mContext = context
+        mUserAgent = userAgent
+        mServiceUrl = ValhalaRoadManager.DEFAULT_SERVICE
+        mMeanUrl = ValhalaRoadManager.MEAN_BY_BIKE
+    }
+
 
     companion object {
         //static final String DEFAULT_SERVICE = "https://routing.openstreetmap.de/";
-        const val MEAN_BY_CAR = "routed-car/route/v1/driving/"
-        const val MEAN_BY_BIKE = "routed-bike/route/v1/driving/"
-        const val MEAN_BY_FOOT = "routed-foot/route/v1/driving/"
-        const val mServiceUrl: String = "http://127.0.0.1:8002/"
+        const val MEAN_BY_BIKE = "bicycle"
+        const val MEAN_BY_BIKE_WH = "bicycle_wh"
+        const val  DEFAULT_SERVICE= "http://192.168.0.104:8002/"
         /**
          * mapping from OSRM StepManeuver types to MapQuest maneuver IDs:
          */
-        val MANEUVERS: HashMap<String, Int> = HashMap<String, Int>()
+        val MANEUVERS: HashMap<Int, Int> = HashMap<Int, Int>() // INT - INT
 
         //From: Project-OSRM-Web / WebContent / localization / OSRM.Locale.en.js
         // driving directions
@@ -59,44 +120,44 @@ class ValhalaRoadManager(private val mContext: Context, protected var mUserAgent
         val DIRECTIONS: HashMap<Int, Any> = HashMap<Int, Any>()
 
         init {
-            MANEUVERS.put("new name", 2) //road name change
-            MANEUVERS.put("turn-straight", 1) //Continue straight
-            MANEUVERS.put("turn-slight right", 6) //Slight right
-            MANEUVERS.put("turn-right", 7) //Right
-            MANEUVERS.put("turn-sharp right", 8) //Sharp right
-            MANEUVERS.put("turn-uturn", 12) //U-turn
-            MANEUVERS.put("turn-sharp left", 5) //Sharp left
-            MANEUVERS.put("turn-left", 4) //Left
-            MANEUVERS.put("turn-slight left", 3) //Slight left
-            MANEUVERS.put("depart", 24) //"Head" => used by OSRM as the start node. Considered here as a "waypoint".
+            //MANEUVERS.put("new name", 2) //road name change !    !    !    !    !    !    !    !    !
+            MANEUVERS.put(22, 1) //Continue straight
+            MANEUVERS.put(9, 6) //Slight right
+            MANEUVERS.put(10, 7) //Right
+            MANEUVERS.put(11, 8) //Sharp right
+            MANEUVERS.put(12, 12) //U-turn
+            MANEUVERS.put(13, 12) //U-turn
+            MANEUVERS.put(14, 5) //Sharp left
+            MANEUVERS.put(15, 4) //Left
+            MANEUVERS.put(16, 3) //Slight left
+            MANEUVERS.put(1, 24) //"Head" => used by OSRM as the start node. Considered here as a "waypoint".
             // TODO - to check...
-            MANEUVERS.put("arrive", 24) //Arrived (at waypoint)
-            MANEUVERS.put("roundabout-1", 27) //Round-about, 1st exit
-            MANEUVERS.put("roundabout-2", 28) //2nd exit, etc ...
-            MANEUVERS.put("roundabout-3", 29)
+            MANEUVERS.put(4, 24) //Arrived (at waypoint)
+            MANEUVERS.put(27, 27) //Round-about, 1st exit
+            /*MANEUVERS.put(27, 28) //2nd exit, etc ...
+            MANEUVERS.put(27, 29)
             MANEUVERS.put("roundabout-4", 30)
             MANEUVERS.put("roundabout-5", 31)
             MANEUVERS.put("roundabout-6", 32)
             MANEUVERS.put("roundabout-7", 33)
             MANEUVERS.put("roundabout-8", 34) //Round-about, 8th exit
+            */
             //TODO: other OSRM types to handle properly:
-            MANEUVERS.put("merge-left", 20)
-            MANEUVERS.put("merge-sharp left", 20)
-            MANEUVERS.put("merge-slight left", 20)
-            MANEUVERS.put("merge-right", 21)
-            MANEUVERS.put("merge-sharp right", 21)
-            MANEUVERS.put("merge-slight right", 21)
-            MANEUVERS.put("merge-straight", 22)
-            MANEUVERS.put("ramp-left", 17)
-            MANEUVERS.put("ramp-sharp left", 17)
-            MANEUVERS.put("ramp-slight left", 17)
-            MANEUVERS.put("ramp-right", 18)
-            MANEUVERS.put("ramp-sharp right", 18)
-            MANEUVERS.put("ramp-slight right", 18)
-            MANEUVERS.put("ramp-straight", 19)
-            //MANEUVERS.put("fork", );
-            //MANEUVERS.put("end of road", );
-            //MANEUVERS.put("continue", );
+            MANEUVERS.put(38, 20)
+            //MANEUVERS.put("merge-sharp left", 20)
+            //MANEUVERS.put("merge-slight left", 20)
+            MANEUVERS.put(37, 21)
+            //MANEUVERS.put("merge-sharp right", 21)
+            //MANEUVERS.put("merge-slight right", 21)
+            //MANEUVERS.put("merge-straight", 22)
+            MANEUVERS.put(19, 17)
+            //MANEUVERS.put("ramp-sharp left", 17)
+            //MANEUVERS.put("ramp-slight left", 17)
+            MANEUVERS.put(18, 18)
+            //MANEUVERS.put("ramp-sharp right", 18)
+            //MANEUVERS.put("ramp-slight right", 18)
+            MANEUVERS.put(17, 19)
+
 
             DIRECTIONS.put(1, R.string.osmbonuspack_directions_1)
             DIRECTIONS.put(2, R.string.osmbonuspack_directions_2)
@@ -123,21 +184,25 @@ class ValhalaRoadManager(private val mContext: Context, protected var mUserAgent
             DIRECTIONS.put(33, R.string.osmbonuspack_directions_33)
             DIRECTIONS.put(34, R.string.osmbonuspack_directions_34)
         }
-
     }
 
-    /** allows to request on an other site than OSRM demo site  */
-    fun setService(serviceUrl: String) {
-        mServiceUrl = serviceUrl
-    }
+
 
     /** to switch to another mean of transportation  */
     fun setMean(meanUrl: String) {
         mMeanUrl = meanUrl
     }
 
+    //http://localhost:8002/route?json={"locations":[{"lat":55.7074932,"lon":37.5690340},{"lat":55.7175925,"lon":37.5496478}],"costing":"bicycle","directions_type":"maneuvers"}
     protected fun getUrl(waypoints: ArrayList<GeoPoint>, getAlternate: Boolean): String {
-        val urlString = StringBuilder(mServiceUrl + mMeanUrl)
+    val p_start_lat = "%.7f".format(waypoints[0].latitude).replace(",", ".")
+    val p_start_lon = "%.7f".format(waypoints[0].longitude).replace(",", ".")
+    val p_stop_lat = "%.7f".format(waypoints[1].latitude).replace(",", ".")
+    val p_stop_lon = "%.7f".format(waypoints[1].longitude).replace(",", ".")
+    return "${mServiceUrl}route?json={\"locations\":[{\"lat\":${p_start_lat},\"lon\":${p_start_lon}},{\"lat\":${p_stop_lat},\"lon\":${p_stop_lon}}],\"costing\":\"${mMeanUrl}\",\"directions_type\":\"maneuvers\"}"
+
+
+    /*val urlString = StringBuilder(mServiceUrl + mMeanUrl)
         for (i in waypoints.indices) {
             val p = waypoints[i]
             if (i > 0) urlString.append(';')
@@ -146,7 +211,7 @@ class ValhalaRoadManager(private val mContext: Context, protected var mUserAgent
         urlString.append("?alternatives=" + if (getAlternate) "true" else "false")
         urlString.append("&overview=full&steps=true")
         urlString.append(mOptions)
-        return urlString.toString()
+        return urlString.toString()*/
     }
 
     protected fun defaultRoad(waypoints: ArrayList<GeoPoint>?): Array<Road?> {
@@ -157,89 +222,86 @@ class ValhalaRoadManager(private val mContext: Context, protected var mUserAgent
 
     protected fun getRoads(waypoints: ArrayList<GeoPoint>, getAlternate: Boolean): Array<Road?> {
         val url = getUrl(waypoints, getAlternate)
-        Log.d(BonusPackHelper.LOG_TAG, "OSRMRoadManager.getRoads:$url")
+        Log.d(BonusPackHelper.LOG_TAG, "ValhalaRoadManager.getRoads:$url")
         val jString = BonusPackHelper.requestStringFromUrl(url, mUserAgent)
         if (jString == null) {
-            Log.e(BonusPackHelper.LOG_TAG, "OSRMRoadManager::getRoad: request failed.")
+            Log.e(BonusPackHelper.LOG_TAG, "ValhalaRoadManager::getRoad: request failed.")
             return defaultRoad(waypoints)
         }
         return try {
             val jObject = JSONObject(jString)
-            val jCode = jObject.getString("code")
-            if ("Ok" != jCode) {
+            val jTrip = jObject.getJSONObject("trip")
+            val jCode = jTrip.getInt("status")
+            if (0 != jCode) {
                 Log.e(
                     BonusPackHelper.LOG_TAG,
-                    "OSRMRoadManager::getRoad: error code=$jCode"
+                    "ValhalaRoadManager::getRoad: error code=$jCode"
                 )
                 val roads = defaultRoad(waypoints)
-                if ("NoRoute" == jCode) {
-                    roads[0]!!.mStatus = Road.STATUS_INVALID
-                }
+                roads[0]!!.mStatus = Road.STATUS_INVALID
                 roads
             } else {
-                val jRoutes = jObject.getJSONArray("routes")
-                val roads = arrayOfNulls<Road>(jRoutes.length())
-                for (i in 0 until jRoutes.length()) {
-                    val road = Road()
-                    roads[i] = road
-                    road.mStatus = Road.STATUS_OK
-                    val jRoute = jRoutes.getJSONObject(i)
-                    val route_geometry = jRoute.getString("geometry")
-                    road.mRouteHigh = PolylineEncoder.decode(route_geometry, 10, false)
-                    road.mBoundingBox = BoundingBox.fromGeoPoints(road.mRouteHigh)
-                    road.mLength = jRoute.getDouble("distance") / 1000.0
-                    road.mDuration = jRoute.getDouble("duration")
-                    //legs:
-                    val jLegs = jRoute.getJSONArray("legs")
-                    for (l in 0 until jLegs.length()) {
-                        //leg:
-                        val jLeg = jLegs.getJSONObject(l)
-                        val leg = RoadLeg()
-                        road.mLegs.add(leg)
-                        leg.mLength = jLeg.getDouble("distance")
-                        leg.mDuration = jLeg.getDouble("duration")
-                        //steps:
-                        val jSteps = jLeg.getJSONArray("steps")
-                        var lastNode: RoadNode? = null
-                        var lastRoadName = ""
-                        for (s in 0 until jSteps.length()) {
-                            val jStep = jSteps.getJSONObject(s)
-                            val node = RoadNode()
-                            node.mLength = jStep.getDouble("distance") / 1000.0
-                            node.mDuration = jStep.getDouble("duration")
-                            val jStepManeuver = jStep.getJSONObject("maneuver")
-                            val jLocation = jStepManeuver.getJSONArray("location")
-                            node.mLocation =
-                                GeoPoint(jLocation.getDouble(1), jLocation.getDouble(0))
-                            var direction = jStepManeuver.getString("type")
-                            if (direction == "turn" || direction == "ramp" || direction == "merge") {
-                                val modifier = jStepManeuver.getString("modifier")
-                                direction = "$direction-$modifier"
-                            } else if (direction == "roundabout") {
-                                val exit = jStepManeuver.getInt("exit")
-                                direction = "$direction-$exit"
-                            } else if (direction == "rotary") {
-                                val exit = jStepManeuver.getInt("exit")
-                                direction = "roundabout-$exit" //convert rotary in roundabout...
+                val road = Road()
+                val roads = arrayOfNulls<Road>(1)
+                road.mStatus = Road.STATUS_OK
+                val jsummary = jTrip.getJSONObject("summary")
+                val north = jsummary.getDouble("max_lat")
+                val west = jsummary.getDouble("min_lon")
+                val east = jsummary.getDouble("max_lon")
+                val south = jsummary.getDouble("min_lat")
+                road.mBoundingBox = BoundingBox(north, east, south, west)
+                road.mLength = jsummary.getDouble("length")
+                road.mDuration = jsummary.getDouble("time")
+
+                //val startloc = jTrip.getJSONArray("locatons").getJSONObject(0)
+                //val startpoint = GeoPoint(startloc.getDouble("lat"), startloc.getDouble("lon"))
+                //road.mRouteHigh.add(startpoint)
+                //legs:
+                val jLegs = jTrip.getJSONArray("legs")
+                for (l in 0 until jLegs.length()) {
+                    val jLeg = jLegs.getJSONObject(l)
+                    val enc_string = jLeg.getString("shape")
+                    val enc_shape = decoder(enc_string)
+                    road.mRouteHigh.addAll(enc_shape)
+                    val leg = RoadLeg()
+                    road.mLegs.add(leg)
+                    val jLeg_sum = jLeg.getJSONObject("summary")
+                    leg.mLength = jLeg_sum.getDouble("length")
+                    leg.mDuration = jLeg_sum.getDouble("time")
+                    //steps:
+                    val jSteps = jLeg.getJSONArray("maneuvers")
+                    //var lastNode: RoadNode? = null
+                    //    var lastRoadName = ""
+                    for (s in 0 until jSteps.length()) {
+                        val jStep = jSteps.getJSONObject(s)
+                        val node = RoadNode()
+                        node.mLength = jStep.getDouble("length")
+                        node.mDuration = jStep.getDouble("time")
+                        val jLocation_index = jStep.getInt("begin_shape_index")
+                        node.mLocation = enc_shape[jLocation_index]
+                        val direction = jStep.getInt("type")
+                        node.mManeuverType = getManeuverCode(direction)
+                        var roadName = ""
+                        try {
+                            val roadNames = jStep.getJSONArray("street_names")
+                            if (roadNames.length() > 0) {
+                                roadName = roadNames.getString(0)
                             }
-                            node.mManeuverType = getManeuverCode(direction)
-                            val roadName = jStep.optString("name", "")
-                            node.mInstructions = buildInstructions(node.mManeuverType, roadName)
-                            if (lastNode != null && node.mManeuverType == 2 && lastRoadName == roadName) {
-                                //workaround for https://github.com/Project-OSRM/osrm-backend/issues/2273
-                                //"new name", but identical to previous name:
-                                //skip, but update values of last node:
-                                lastNode.mDuration += node.mDuration
-                                lastNode.mLength += node.mLength
-                            } else {
-                                road.mNodes.add(node)
-                                lastNode = node
-                                lastRoadName = roadName
-                            }
-                        } //steps
-                    } //legs
-                } //routes
+                        }
+                        catch (e: JSONException)
+                        {
+
+                        }
+                        node.mInstructions = buildInstructions(node.mManeuverType, roadName)
+                        road.mNodes.add(node)
+                    } //steps
+                }
+                //legs //routes
+                //val endloc = jTrip.getJSONArray("locatons").getJSONObject(1)
+                //val endpoint = GeoPoint(endloc.getDouble("lat"), startloc.getDouble("lon"))
+                //road.mRouteHigh.add(endpoint)
                 Log.d(BonusPackHelper.LOG_TAG, "OSRMRoadManager.getRoads - finished")
+                roads[0] = road
                 roads
             } //if code is Ok
         } catch (e: JSONException) {
@@ -257,14 +319,13 @@ class ValhalaRoadManager(private val mContext: Context, protected var mUserAgent
         return roads[0]
     }
 
-    protected fun getManeuverCode(direction: String?): Int {
+    protected fun getManeuverCode(direction: Int?): Int {
         val code: Int? = MANEUVERS.get(direction)
         return code ?: 0
     }
 
     protected fun buildInstructions(maneuver: Int, roadName: String): String? {
         val resDirection = DIRECTIONS.get(maneuver) as Int
-            ?: return null
         var direction = mContext.getString(resDirection)
         val instructions: String
         if (roadName == "") //remove "<*>"

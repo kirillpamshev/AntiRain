@@ -185,8 +185,8 @@ class MainActivity : AppCompatActivity() {
 
                 map.overlays.add(endMarker)
                 map.invalidate()
-                val roadManager: RoadManager = OSRMRoadManager(this, "AntiRain")
-                (roadManager as OSRMRoadManager).setMean(OSRMRoadManager.MEAN_BY_BIKE)
+                val roadManager: RoadManager = ValhalaRoadManager(this, "AntiRain")
+                (roadManager as ValhalaRoadManager).setMean(ValhalaRoadManager.MEAN_BY_BIKE)
                 val waypoints = ArrayList<GeoPoint>()
                 waypoints.add(startPoint)
                 waypoints.add(endPoint)
