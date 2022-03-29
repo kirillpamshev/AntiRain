@@ -23,6 +23,7 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import com.google.android.material.snackbar.Snackbar
 import android.content.Intent
+import android.graphics.Color
 import android.location.*
 import org.osmdroid.util.GeoPoint
 
@@ -38,6 +39,7 @@ import java.util.*
 import kotlin.collections.ArrayList
 import android.os.StrictMode
 import android.os.StrictMode.ThreadPolicy
+import android.widget.Toast
 import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.bonuspack.routing.OSRMRoadManager
 
@@ -182,20 +184,45 @@ class MainActivity : AppCompatActivity() {
                         break
                     }
                 }
+                for (i in 0 until map.overlays.size) {
+                    val overlay: Overlay = map.overlays[i]
+                    if (overlay is Polyline) {
+                        map.getOverlays().remove(overlay)
+                        break
+                    }
+                }
+                for (i in 0 until map.overlays.size) {
+                    val overlay: Overlay = map.overlays[i]
+                    if (overlay is Polyline) {
+                        map.getOverlays().remove(overlay)
+                        break
+                    }
+                }
 
                 map.overlays.add(endMarker)
                 map.invalidate()
-                val roadManager: RoadManager = ValhalaRoadManager(this, "AntiRain")
-                (roadManager as ValhalaRoadManager).setMean(ValhalaRoadManager.MEAN_BY_BIKE)
                 val waypoints = ArrayList<GeoPoint>()
                 waypoints.add(startPoint)
                 waypoints.add(endPoint)
+                val roadManager: RoadManager = ValhalaRoadManager(this, "AntiRain")
+                (roadManager as ValhalaRoadManager).setMean(ValhalaRoadManager.MEAN_BY_BIKE)
                 val road = roadManager.getRoad(waypoints)
-                val roadOverlay = RoadManager.buildRoadOverlay(road)
+                val roadOverlay = RoadManager.buildRoadOverlay(road, Color.BLUE, 13.5f)
+                val roadInfo = "Length = ${road?.mLength} km\nTime = ${road?.mDuration?.div(60.0)} min"
+                roadOverlay.setOnClickListener { polyline, mapView, eventPos ->
+                Toast.makeText(ctx, roadInfo, Toast.LENGTH_LONG).show()
+                true}
                 map.getOverlays().add(roadOverlay)
+                (roadManager as ValhalaRoadManager).setMean(ValhalaRoadManager.MEAN_BY_BIKE_WH)
+                val road_wh = roadManager.getRoad(waypoints)
+                val roadOverlay_wh = RoadManager.buildRoadOverlay(road_wh, Color.GREEN, 13.5f)
+                val road_whInfo = "Length = ${road_wh?.mLength} km\nTime = ${road_wh?.mDuration?.div(60.0)} min"
+                roadOverlay_wh.setOnClickListener { polyline, mapView, eventPos ->
+                    Toast.makeText(ctx, road_whInfo, Toast.LENGTH_LONG).show()
+                    true}
+                map.getOverlays().add(roadOverlay_wh)
                 map.invalidate()
             }
-
 
         }
 

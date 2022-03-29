@@ -105,8 +105,8 @@ class ValhalaRoadManager() :
     companion object {
         //static final String DEFAULT_SERVICE = "https://routing.openstreetmap.de/";
         const val MEAN_BY_BIKE = "bicycle"
-        const val MEAN_BY_BIKE_WH = "bicycle_wh"
-        const val  DEFAULT_SERVICE= "http://192.168.0.104:8002/"
+        const val MEAN_BY_BIKE_WH = "bicyclewh"
+        const val  DEFAULT_SERVICE= "http://192.168.0.105:8002/"
         /**
          * mapping from OSRM StepManeuver types to MapQuest maneuver IDs:
          */
@@ -134,14 +134,34 @@ class ValhalaRoadManager() :
             // TODO - to check...
             MANEUVERS.put(4, 24) //Arrived (at waypoint)
             MANEUVERS.put(27, 27) //Round-about, 1st exit
-            /*MANEUVERS.put(27, 28) //2nd exit, etc ...
+            MANEUVERS.put(27, 28) //
             MANEUVERS.put(27, 29)
-            MANEUVERS.put("roundabout-4", 30)
-            MANEUVERS.put("roundabout-5", 31)
-            MANEUVERS.put("roundabout-6", 32)
-            MANEUVERS.put("roundabout-7", 33)
-            MANEUVERS.put("roundabout-8", 34) //Round-about, 8th exit
-            */
+
+
+            MANEUVERS.put(2, 30) // "roundabout-4"
+            MANEUVERS.put(3, 30) // "roundabout-4"
+            MANEUVERS.put(5, 30) // "roundabout-4"
+            MANEUVERS.put(6, 30) // "roundabout-4"
+            MANEUVERS.put(7, 30) // "roundabout-4"
+            MANEUVERS.put(8, 30) // "roundabout-4"
+            MANEUVERS.put(20, 30) // "roundabout-4"
+            MANEUVERS.put(21, 30) // "roundabout-4"
+            MANEUVERS.put(22, 30) // "roundabout-4"
+            MANEUVERS.put(23, 30) // "roundabout-4"
+            MANEUVERS.put(24, 30) // "roundabout-4"
+            MANEUVERS.put(25, 30) // "roundabout-4"
+            MANEUVERS.put(26, 30) // "roundabout-4"
+            MANEUVERS.put(27, 30) // "roundabout-4"
+            MANEUVERS.put(28, 30) // "roundabout-4"
+            MANEUVERS.put(29, 30) // "roundabout-4"
+            MANEUVERS.put(30, 30) // "roundabout-4"
+            MANEUVERS.put(31, 30) // "roundabout-4"
+            MANEUVERS.put(32, 30) // "roundabout-4"
+            MANEUVERS.put(33, 30) // "roundabout-4"
+            MANEUVERS.put(34, 30) // "roundabout-4"
+            MANEUVERS.put(35, 30) // "roundabout-4"
+            MANEUVERS.put(36, 30) // "roundabout-4"
+
             //TODO: other OSRM types to handle properly:
             MANEUVERS.put(38, 20)
             //MANEUVERS.put("merge-sharp left", 20)
