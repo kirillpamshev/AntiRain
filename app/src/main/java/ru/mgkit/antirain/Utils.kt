@@ -70,21 +70,6 @@ fun decoder(enc: String): ArrayList<GeoPoint> {
 
 }
 
-
-/** get a route between a start and a destination point, going through a list of waypoints.
- * It uses OSRM, a free open source routing service based on OpenSteetMap data. <br></br>
- *
- * It requests by default the OSRM demo site.
- * Use setService() to request an other (for instance your own) OSRM service. <br></br>
- *
- * @see [OSRM](https://github.com/DennisOSRM/Project-OSRM/wiki/Server-api)
- *
- * @see [V5 API](https://github.com/Project-OSRM/osrm-backend/wiki/New-Server-api)
- *
- *
- * @author M.Kergall
- */
-
 class ValhalaRoadManager() :
     RoadManager() {
         //"http://localhost:8002/route --data '{"locations":[{"lat":55.7074932,"lon":37.5690340},{"lat":55.7175925,"lon":37.5496478}],"costing":"bicycle","directions_type":"maneuvers"}' | jq '.'"
@@ -106,7 +91,7 @@ class ValhalaRoadManager() :
         //static final String DEFAULT_SERVICE = "https://routing.openstreetmap.de/";
         const val MEAN_BY_BIKE = "bicycle"
         const val MEAN_BY_BIKE_WH = "bicyclewh"
-        const val  DEFAULT_SERVICE= "http://192.168.0.105:8002/"
+        const val DEFAULT_SERVICE= "http://84.201.178.30:8002/"
         /**
          * mapping from OSRM StepManeuver types to MapQuest maneuver IDs:
          */
@@ -221,17 +206,6 @@ class ValhalaRoadManager() :
     val p_stop_lon = "%.7f".format(waypoints[1].longitude).replace(",", ".")
     return "${mServiceUrl}route?json={\"locations\":[{\"lat\":${p_start_lat},\"lon\":${p_start_lon}},{\"lat\":${p_stop_lat},\"lon\":${p_stop_lon}}],\"costing\":\"${mMeanUrl}\",\"directions_type\":\"maneuvers\"}"
 
-
-    /*val urlString = StringBuilder(mServiceUrl + mMeanUrl)
-        for (i in waypoints.indices) {
-            val p = waypoints[i]
-            if (i > 0) urlString.append(';')
-            urlString.append(geoPointAsLonLatString(p))
-        }
-        urlString.append("?alternatives=" + if (getAlternate) "true" else "false")
-        urlString.append("&overview=full&steps=true")
-        urlString.append(mOptions)
-        return urlString.toString()*/
     }
 
     protected fun defaultRoad(waypoints: ArrayList<GeoPoint>?): Array<Road?> {
@@ -242,7 +216,7 @@ class ValhalaRoadManager() :
 
     protected fun getRoads(waypoints: ArrayList<GeoPoint>, getAlternate: Boolean): Array<Road?> {
         val url = getUrl(waypoints, getAlternate)
-        Log.d(BonusPackHelper.LOG_TAG, "ValhalaRoadManager.getRoads:$url")
+        //Log.d(BonusPackHelper.LOG_TAG, "ValhalaRoadManager.getRoads:$url")
         val jString = BonusPackHelper.requestStringFromUrl(url, mUserAgent)
         if (jString == null) {
             Log.e(BonusPackHelper.LOG_TAG, "ValhalaRoadManager::getRoad: request failed.")
@@ -273,9 +247,7 @@ class ValhalaRoadManager() :
                 road.mLength = jsummary.getDouble("length")
                 road.mDuration = jsummary.getDouble("time")
 
-                //val startloc = jTrip.getJSONArray("locatons").getJSONObject(0)
-                //val startpoint = GeoPoint(startloc.getDouble("lat"), startloc.getDouble("lon"))
-                //road.mRouteHigh.add(startpoint)
+
                 //legs:
                 val jLegs = jTrip.getJSONArray("legs")
                 for (l in 0 until jLegs.length()) {
@@ -317,10 +289,7 @@ class ValhalaRoadManager() :
                     } //steps
                 }
                 //legs //routes
-                //val endloc = jTrip.getJSONArray("locatons").getJSONObject(1)
-                //val endpoint = GeoPoint(endloc.getDouble("lat"), startloc.getDouble("lon"))
-                //road.mRouteHigh.add(endpoint)
-                Log.d(BonusPackHelper.LOG_TAG, "OSRMRoadManager.getRoads - finished")
+                //Log.d(BonusPackHelper.LOG_TAG, "OSRMRoadManager.getRoads - finished")
                 roads[0] = road
                 roads
             } //if code is Ok
